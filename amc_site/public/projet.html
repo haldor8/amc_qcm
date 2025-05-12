@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Projet</title></head>
+<body>
+  <h1 id="titre"></h1>
+  <form id="uploadForm" enctype="multipart/form-data">
+    <input type="file" name="fichiers" multiple required>
+    <button type="submit">Uploader</button>
+  </form>
+  <button onclick="lancer('creer')">Créer copies</button>
+  <button onclick="lancer('corriger')">Corriger copies</button>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const projet = params.get('nom');
+    document.getElementById('titre').textContent = projet;
+
+    document.getElementById('uploadForm').onsubmit = async e => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      formData.append('projet', projet);
+      await fetch('/api/projet/upload', { method: 'POST', body: formData });
+      alert('Upload terminé');
+    };
+
+    function lancer(action) {
+      fetch('/api/projet/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projet, action })
+      }).then(res => {
+        if (!res.ok) return alert('Erreur');
+        return res.blob();
+      }).then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = action === 'creer' ? 'copies.pdf' : 'notes.odt';
+        a.click();
+      });
+    }
+  </script>
+</body>
+</html>

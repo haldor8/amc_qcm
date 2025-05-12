@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>AMC</title></head>
+<body>
+  <script>
+    fetch('/api/user/me').then(res => {
+      if (res.ok) {
+        location.href = '/dashboard.html';
+      } else {
+        location.href = '/login_choice.html';
+      }
+    });
+  </script>  
+</body>
+</html>

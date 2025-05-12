@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Dashboard</title></head>
+<body>
+  <h1>Vos projets</h1>
+  <ul id="liste"></ul>
+  <form id="formProjet">
+    <input name="nom" placeholder="Nom projet" required>
+    <button type="submit">Créer</button>
+  </form>
+  <script>
+    fetch('/api/projet/liste').then(res => res.json()).then(projets => {
+      const ul = document.getElementById('liste');
+      projets.forEach(p => {
+        const li = document.createElement('li');
+        li.innerHTML = `<a href="/projet.html?nom=${p}">${p}</a>`;
+        ul.appendChild(li);
+      });
+    });
+
+    document.getElementById('formProjet').onsubmit = async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target).entries());
+      await fetch('/api/projet/creer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      location.reload();
+    };
+  </script>
+</body>
+</html>
