@@ -3,12 +3,30 @@
 <head><meta charset="UTF-8"><title>Projet</title></head>
 <body>
   <h1 id="titre"></h1>
+
   <form id="uploadForm" enctype="multipart/form-data">
     <input type="file" name="fichiers" multiple required>
     <button type="submit">Uploader</button>
   </form>
-  <button onclick="lancer('creer')">Créer copies</button>
-  <button onclick="lancer('corriger')">Corriger copies</button>
+
+  <h2>Créer copies</h2>
+  <form id="formCreer">
+    <label>Fichier LaTeX :
+      <select id="latexSelect" name="latex" required></select>
+    </label>
+    <label>Liste étudiants :
+      <select id="etudiantsCreerSelect" name="etudiants" required></select>
+    </label>
+    <button type="submit">Créer copies</button>
+  </form>
+
+  <h2>Corriger copies</h2>
+  <form id="formCorriger">
+    <label>Liste étudiants :
+      <select id="etudiantsCorrigerSelect" name="etudiants" required></select>
+    </label>
+    <button type="submit">Corriger copies</button>
+  </form>
 
   <script>
     const params = new URLSearchParams(location.search);
@@ -21,24 +39,67 @@
       formData.append('projet', projet);
       await fetch('/api/projet/upload', { method: 'POST', body: formData });
       alert('Upload terminé');
+      location.reload();
     };
 
-    function lancer(action) {
-      fetch('/api/projet/action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projet, action })
-      }).then(res => {
-        if (!res.ok) return alert('Erreur');
-        return res.blob();
-      }).then(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = action === 'creer' ? 'copies.pdf' : 'notes.odt';
-        a.click();
+    async function chargerFichiers() {
+      const res = await fetch('/api/projet/fichiers?projet=' + projet);
+      const fichiers = await res.json();
+
+      const tex = fichiers.filter(f => f.endsWith('.tex'));
+      const csv = fichiers.filter(f => f.endsWith('.csv'));
+
+      const latexSelect = document.getElementById('latexSelect');
+      const etudiantsCreerSelect = document.getElementById('etudiantsCreerSelect');
+      const etudiantsCorrigerSelect = document.getElementById('etudiantsCorrigerSelect');
+
+      tex.forEach(f => {
+        const opt = new Option(f, f);
+        latexSelect.appendChild(opt);
+      });
+
+      csv.forEach(f => {
+        etudiantsCreerSelect.appendChild(new Option(f, f));
+        etudiantsCorrigerSelect.appendChild(new Option(f, f));
       });
     }
+
+    chargerFichiers();
+
+    document.getElementById('formCreer').onsubmit = async e => {
+      e.preventDefault();
+      const latex = e.target.latex.value;
+      const etudiants = e.target.etudiants.value;
+      const res = await fetch('/api/projet/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projet, action: 'creer', latex, etudiants })
+      });
+      if (!res.ok) return alert('Erreur');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'copies.pdf';
+      a.click();
+    };
+
+    document.getElementById('formCorriger').onsubmit = async e => {
+      e.preventDefault();
+      const etudiants = e.target.etudiants.value;
+      const res = await fetch('/api/projet/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projet, action: 'corriger', etudiants })
+      });
+      if (!res.ok) return alert('Erreur');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'notes.odt';
+      a.click();
+    };
   </script>
 </body>
 </html>

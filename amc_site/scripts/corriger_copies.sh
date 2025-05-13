@@ -1,13 +1,12 @@
 #!/bin/bash
 
 # Vérifie les arguments
-if [ "$#" -ne 2 ]; then
+if [ "$#" -ne 1 ]; then
     echo "Usage: $0 <nom_projet> <fichier_etudiants_csv>"
     exit 1
 fi
 
-PROJET=$1
-STUDENT_LIST=$2
+STUDENT_LIST=$1
 BASEDIR="./"
 
 echo ">>> Analyse des copies scannées"

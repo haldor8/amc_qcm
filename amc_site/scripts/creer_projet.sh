@@ -1,6 +1,6 @@
 #!/bin/bash
 # file name: new_project.sh
-PROJECT_DIR="$(pwd)/../uploads"
+PROJECT_DIR="$(pwd)/uploads" # /!\ Le script doit être lancé à la racine du projet
 
 if [ "$#" -ne 1 ]; then
     echo "Usage: $0 <nom_du_projet>"

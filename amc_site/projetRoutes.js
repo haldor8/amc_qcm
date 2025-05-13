@@ -1,19 +1,33 @@
 const express = require('express');
 const router = express.Router();
+
 const multer = require('multer');
 const path = require('path');
+
 const fs = require('fs');
 const { exec } = require('child_process');
 const { ensureAuthenticated } = require('./auth');
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dest = path.join(__dirname, 'uploads', req.session.user, req.body.projet);
-    fs.mkdirSync(dest, { recursive: true });
-    cb(null, dest);
+  destination: function (req, file, cb) {
+    const projet = req.body.projet;
+    const user = req.session.utilisateur;
+
+    console.log(req.projet, req.body.projet);
+    if (!projet || !user) {
+      return cb(new Error('projet ou utilisateur manquant'));
+    }
+
+    const dir = path.join(__dirname, 'projets', user, projet);
+
+    fs.mkdirSync(dir, { recursive: true }); // Crée le dossier si nécessaire
+    cb(null, dir);
   },
-  filename: (req, file, cb) => cb(null, file.originalname)
+  filename: function (req, file, cb) {
+    cb(null, file.originalname);
+  }
 });
+
 const upload = multer({ storage });
 
 router.get('/liste', ensureAuthenticated, (req, res) => {
@@ -32,33 +46,60 @@ router.post('/creer', ensureAuthenticated, (req, res) => {
   const scriptPath = path.join(__dirname, 'scripts', 'creer_projet.sh');
 
   if (!fs.existsSync(fullPath)) {
-    console.log(`./scripts/creer_projet.sh "${relPath}"`);
+    console.log(`bash "${scriptPath}" "${relPath}"`);
     exec(`bash "${scriptPath}" "${relPath}"`, (err) => {
-      if (err) return res.status(500).send('Erreur script');
-      return res.sendStatus(200);
+      if (err) {
+      // console.error(`[ERREUR] exec error: ${err.message}`);
+      return res.status(500).send(`Erreur lors de l'exécution du script`);
+    }
+    res.sendStatus(200);
     });
   } else {
     res.status(400).send('Projet existe');
   }
 });
 
-router.post('/upload', ensureAuthenticated, upload.any(), (req, res) => {
-  res.sendStatus(200);
+router.post('/upload', ensureAuthenticated, upload.array('fichiers'), (req, res) => {
+  res.send('Fichiers uploadés');
+});
+
+router.get('/fichiers', ensureAuthenticated, (req, res) => {
+  const { projet } = req.query;
+  const dir = path.join(__dirname, '..', 'uploads', req.session.user, projet);
+  if (!fs.existsSync(dir)) return res.status(404).send('Projet non trouvé');
+  const fichiers = fs.readdirSync(dir);
+  res.json(fichiers);
 });
 
 router.post('/action', ensureAuthenticated, (req, res) => {
-  const { projet, action } = req.body;
-  const dir = path.join(__dirname, 'uploads', req.session.user, projet);
-  let script;
-  if (action === 'corriger') script = 'corriger_copies.sh';
-  else if (action === 'creer') script = 'creer_copies.sh';
-  else return res.status(400).send('Action invalide');
+  const { projet, action, latex, etudiants } = req.body;
+  const user = req.session.user;
+  const projetPath = path.join(__dirname, '..', 'uploads', user, projet);
 
-  exec(`./scripts/${script}`, { cwd: dir }, (err) => {
-    if (err) return res.status(500).send('Erreur script');
-    const resultPath = action === 'creer' ? 'copies.pdf' : 'notes.odt';
-    res.download(path.join(dir, resultPath));
+  let cmd;
+  if (action === 'creer') {
+    cmd = `bash "${__dirname}/../scripts/creer_copies.sh" "${user}/${projet}" "${latex}" "${etudiants}"`;
+  } else if (action === 'corriger') {
+    cmd = `bash "${__dirname}/../scripts/corriger_copies.sh" "${user}/${projet}" "${etudiants}"`;
+  } else {
+    return res.status(400).send('Action inconnue');
+  }
+
+  exec(cmd, (err) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).send('Erreur exécution script');
+    }
+
+    const fichier = action === 'creer' ? 'copies.pdf' : 'notes.odt';
+    const filePath = path.join(projetPath, fichier);
+    if (fs.existsSync(filePath)) {
+      res.download(filePath);
+    } else {
+      res.status(404).send('Fichier non trouvé');
+    }
   });
 });
+
 
 module.exports = router;
