@@ -2,6 +2,8 @@
 <html>
 <head><meta charset="UTF-8"><title>Dashboard</title></head>
 <body>
+  <div id="navbar"></div>
+  
   <h1>Vos projets</h1>
   <ul id="liste"></ul>
   <form id="formProjet">
@@ -9,11 +11,17 @@
     <button type="submit">Créer</button>
   </form>
   <script>
-    fetch('/api/projet/liste').then(res => res.json()).then(projets => {
+    fetch('/api/projet/liste')
+    .then(res => res.json())
+    .then(projets => {
       const ul = document.getElementById('liste');
       projets.forEach(p => {
         const li = document.createElement('li');
-        li.innerHTML = `<a href="/projet.html?nom=${p}">${p}</a>`;
+        li.innerHTML = `
+          <a href="/projet.html?nom=${encodeURIComponent(p)}">${p}</a>
+          <button onclick="nettoyerProjet('${encodeURIComponent(p)}')">🧹 Nettoyer</button>
+          <button onclick="supprimerProjet('${encodeURIComponent(p)}')">🗑️ Supprimer</button>
+        `;
         ul.appendChild(li);
       });
     });
@@ -28,6 +36,58 @@
       });
       location.reload();
     };
+
+    async function nettoyerProjet(nom) {
+      const ok = confirm(`Supprimer tous les fichiers de "${decodeURIComponent(nom)}" (hors dossiers) ?`);
+      if (!ok) return;
+
+      const res = await fetch(`/api/projet/nettoyer/${nom}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) alert(`Projet "${decodeURIComponent(nom)}" nettoyé`);
+      else alert('Erreur nettoyage');
+    }
+
+    async function supprimerProjet(nom) {
+      const ok = confirm(`SUPPRIMER complètement le projet "${decodeURIComponent(nom)}" ?`);
+      if (!ok) return;
+
+      const res = await fetch(`/api/projet/supprimer/${nom}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        alert(`Projet "${decodeURIComponent(nom)}" supprimé`);
+        location.reload();
+      } else alert('Erreur suppression');
+    }
+    async function chargerNavbar() {
+      const navbar = document.getElementById('navbar');
+
+      // Charger le HTML de la navbar depuis un fichier externe
+      const html = await fetch('/partials/navbar.html').then(r => r.text());
+      navbar.innerHTML = html;
+
+      // Ensuite ajoute dynamiquement les liens utilisateur
+      const res = await fetch('/api/user/me');
+      if (res.ok) {
+        const user = await res.json();
+        document.getElementById('authLinks').innerHTML = `
+          👤 ${user.username} | <a href="/logout">Déconnexion</a>
+        `;
+        const params = new URLSearchParams(location.search);
+        const nomProjet = params.get('nom');
+        if (nomProjet) {
+          document.getElementById('lienProjet').innerHTML =
+            `<a href="/projet.html?nom=${encodeURIComponent(nomProjet)}">📝 Projet courant</a>`;
+        }
+      } else {
+        document.getElementById('authLinks').innerHTML = `
+          <a href="/login.html">Connexion</a> | <a href="/register.html">Inscription</a>
+        `;
+      }
+    }
   </script>
 </body>
 </html>

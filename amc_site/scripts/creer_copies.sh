@@ -29,3 +29,7 @@ auto-multiple-choice imprime -sujet "./DOC-subject.pdf" \
   --output "./copies/etudiant-%e.pdf"
 
 echo ">>> Copies générées dans ./copies"
+
+tar -czf copies.tar.gz copies/
+
+echo ">>> tarball avec toutes les copies créée"

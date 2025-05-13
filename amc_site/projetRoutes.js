@@ -10,17 +10,15 @@ const { ensureAuthenticated } = require('./auth');
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const projet = req.body.projet;
-    const user = req.session.utilisateur;
+    const utilisateur = req.session.user;
+    const projet = req.params.projet;
 
-    console.log(req.projet, req.body.projet);
-    if (!projet || !user) {
+    if (!utilisateur || !projet) {
       return cb(new Error('projet ou utilisateur manquant'));
     }
 
-    const dir = path.join(__dirname, 'projets', user, projet);
-
-    fs.mkdirSync(dir, { recursive: true }); // Crée le dossier si nécessaire
+    const dir = path.join(__dirname, 'uploads', utilisateur, projet);
+    fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },
   filename: function (req, file, cb) {
@@ -59,46 +57,151 @@ router.post('/creer', ensureAuthenticated, (req, res) => {
   }
 });
 
-router.post('/upload', ensureAuthenticated, upload.array('fichiers'), (req, res) => {
-  res.send('Fichiers uploadés');
+router.post('/upload/:projet', ensureAuthenticated, upload.array('fichiers'), (req, res) => {
+  res.sendStatus(200);
 });
 
 router.get('/fichiers', ensureAuthenticated, (req, res) => {
   const { projet } = req.query;
-  const dir = path.join(__dirname, '..', 'uploads', req.session.user, projet);
+  const dir = path.join(__dirname, 'uploads', req.session.user, projet);
   if (!fs.existsSync(dir)) return res.status(404).send('Projet non trouvé');
-  const fichiers = fs.readdirSync(dir);
-  res.json(fichiers);
+
+  const fichiers = fs.readdirSync(dir)
+    .filter(f => fs.statSync(path.join(dir, f)).isFile());
+
+  res.json(fichiers); // exemple : ["exam.tex", "etudiants.csv", "notes.odt"]
 });
 
-router.post('/action', ensureAuthenticated, (req, res) => {
-  const { projet, action, latex, etudiants } = req.body;
-  const user = req.session.user;
-  const projetPath = path.join(__dirname, '..', 'uploads', user, projet);
 
+router.post('/action', ensureAuthenticated, async (req, res) => {
+  const { projet, action, latex, etudiants, xml } = req.body;
+  const user = req.session.user;
+  const projetPath = path.join(__dirname, 'uploads', user, projet);
+
+  if (!fs.existsSync(projetPath)) {
+    return res.status(404).send('Projet introuvable');
+  }
+
+  // Choisir le nom du script à copier
+  const scriptName = action === 'compiler'
+    ? 'compiler_qcm.sh'
+    : `${action}_copies.sh`;
+
+  const srcScript = path.join(__dirname, 'scripts', scriptName);
+  const destScript = path.join(projetPath, scriptName);
+  fs.copyFileSync(srcScript, destScript);
+  fs.chmodSync(destScript, 0o755); // rendre exécutable
+
+  // Préparer la commande (juste les noms de fichiers)
   let cmd;
   if (action === 'creer') {
-    cmd = `bash "${__dirname}/../scripts/creer_copies.sh" "${user}/${projet}" "${latex}" "${etudiants}"`;
+    if (!latex || !etudiants) return res.status(400).send('Paramètres manquants');
+    cmd = `./${scriptName} "${latex}" "${etudiants}"`;
   } else if (action === 'corriger') {
-    cmd = `bash "${__dirname}/../scripts/corriger_copies.sh" "${user}/${projet}" "${etudiants}"`;
+    if (!etudiants) return res.status(400).send('Paramètre manquant');
+    cmd = `./${scriptName} "${etudiants}"`;
+  } else if (action === 'compiler') {
+    if (!xml) return res.status(400).send('Fichier XML manquant');
+    cmd = `./${scriptName} "${xml}"`;
   } else {
     return res.status(400).send('Action inconnue');
   }
 
-  exec(cmd, (err) => {
+  // Exécuter dans le bon dossier
+  exec(cmd, { cwd: projetPath }, (err) => {
     if (err) {
       console.error(err);
       return res.status(500).send('Erreur exécution script');
     }
 
-    const fichier = action === 'creer' ? 'copies.pdf' : 'notes.odt';
-    const filePath = path.join(projetPath, fichier);
+    // Choisir le bon fichier à renvoyer (ou non)
+    let filePath;
+    if (action === 'creer') {
+      filePath = path.join(projetPath, 'copies.tar.gz');
+    } else if (action === 'corriger') {
+      filePath = path.join(projetPath, 'exports', 'resultats.ods');
+    } else if (action === 'compiler') {
+      return res.sendStatus(200); // aucun téléchargement attendu
+    } else {
+      return res.status(400).send('Action inconnue');
+    }
+
     if (fs.existsSync(filePath)) {
       res.download(filePath);
     } else {
-      res.status(404).send('Fichier non trouvé');
+      res.status(404).send('Fichier généré introuvable');
     }
   });
+});
+
+const scanStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const utilisateur = req.session.user;
+    const projet = req.params.projet;
+
+    if (!utilisateur || !projet) {
+      return cb(new Error('projet ou utilisateur manquant'));
+    }
+
+    const scanDir = path.join(__dirname, 'uploads', utilisateur, projet, 'scans');
+    fs.mkdirSync(scanDir, { recursive: true });
+    cb(null, scanDir);
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.originalname);
+  }
+});
+
+const uploadScans = multer({ storage: scanStorage });
+
+router.post('/upload/:projet/scans', ensureAuthenticated, uploadScans.array('scans'), (req, res) => {
+  res.sendStatus(200);
+});
+
+// Nettoyer les fichiers d'un projet (pas les sous-dossiers)
+router.delete('/nettoyer/:projet', ensureAuthenticated, (req, res) => {
+  const projetDir = path.join(__dirname, 'uploads', req.session.user, req.params.projet);
+  if (!fs.existsSync(projetDir)) return res.status(404).send('Projet introuvable');
+
+  // Fonction récursive pour supprimer tous les fichiers mais garder les dossiers
+  function nettoyerDossier(dir) {
+    fs.readdirSync(dir).forEach(file => {
+      const fullPath = path.join(dir, file);
+      const stats = fs.statSync(fullPath);
+      if (stats.isDirectory()) {
+        nettoyerDossier(fullPath); // récursion
+      } else {
+        fs.unlinkSync(fullPath); // supprime le fichier
+      }
+    });
+  }
+
+  nettoyerDossier(projetDir);
+  res.sendStatus(200);
+});
+
+
+// Supprimer tous les scans
+router.delete('/supprimer-scans/:projet', ensureAuthenticated, (req, res) => {
+  const scanDir = path.join(__dirname, 'uploads', req.session.user, req.params.projet, 'scans');
+  if (!fs.existsSync(scanDir)) return res.status(404).send('Dossier scans introuvable');
+
+  fs.readdirSync(scanDir).forEach(file => {
+    const fullPath = path.join(scanDir, file);
+    if (fs.statSync(fullPath).isFile()) {
+      fs.unlinkSync(fullPath);
+    }
+  });
+
+  res.sendStatus(200);
+});
+
+router.delete('/supprimer/:projet', ensureAuthenticated, (req, res) => {
+  const projetDir = path.join(__dirname, 'uploads', req.session.user, req.params.projet);
+  if (!fs.existsSync(projetDir)) return res.status(404).send('Projet introuvable');
+
+  fs.rmSync(projetDir, { recursive: true, force: true });
+  res.sendStatus(200);
 });
 
 
