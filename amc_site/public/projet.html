@@ -2,6 +2,8 @@
 <html>
   <head><meta charset="UTF-8"><title>Projet</title></head>
   <body>
+    <div id="navbar"></div>
+    
     <h1 id="titre"></h1>
     <button id="btnNettoyerProjet">🧹 Nettoyer le projet</button>
 
@@ -204,6 +206,14 @@
       else alert("Erreur nettoyage.");
     };
 
+    async function chargerNavbar() {
+      const navbar = document.getElementById('navbar');
+
+      // Charger le HTML de la navbar
+      const html = await fetch('/partials/navbar.html').then(r => r.text());
+      navbar.innerHTML = html;
+    }
+    chargerNavbar();
     </script>
   </body>
 </html>

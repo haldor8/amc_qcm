@@ -62,32 +62,15 @@
         location.reload();
       } else alert('Erreur suppression');
     }
+    
     async function chargerNavbar() {
       const navbar = document.getElementById('navbar');
 
-      // Charger le HTML de la navbar depuis un fichier externe
+      // Charger le HTML de la navbar
       const html = await fetch('/partials/navbar.html').then(r => r.text());
       navbar.innerHTML = html;
-
-      // Ensuite ajoute dynamiquement les liens utilisateur
-      const res = await fetch('/api/user/me');
-      if (res.ok) {
-        const user = await res.json();
-        document.getElementById('authLinks').innerHTML = `
-          👤 ${user.username} | <a href="/logout">Déconnexion</a>
-        `;
-        const params = new URLSearchParams(location.search);
-        const nomProjet = params.get('nom');
-        if (nomProjet) {
-          document.getElementById('lienProjet').innerHTML =
-            `<a href="/projet.html?nom=${encodeURIComponent(nomProjet)}">📝 Projet courant</a>`;
-        }
-      } else {
-        document.getElementById('authLinks').innerHTML = `
-          <a href="/login.html">Connexion</a> | <a href="/register.html">Inscription</a>
-        `;
-      }
     }
+    chargerNavbar();
   </script>
 </body>
 </html>
