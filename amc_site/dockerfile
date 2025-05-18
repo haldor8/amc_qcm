@@ -1,0 +1,27 @@
+FROM debian:bullseye
+
+# Dépendances système + AMC + MongoDB + Node.js
+RUN apt-get update && apt-get install -y \
+    curl gnupg wget build-essential \
+    mongodb nodejs npm \
+    texlive-full \
+    auto-multiple-choice \
+    && rm -rf /var/lib/apt/lists/*
+
+# Dossier de travail
+WORKDIR /app
+
+# Copier le code source
+COPY . /app
+
+# Créer un dossier pour la base de données MongoDB
+RUN mkdir -p /app/db
+
+# Installer les dépendances Node.js
+RUN npm install
+
+# Exposer les ports
+EXPOSE 3000 27017
+
+# Commande de démarrage : MongoDB avec db dans ./db, puis serveur
+CMD mongod --dbpath /app/db --fork --logpath /var/log/mongod.log && node server.js
