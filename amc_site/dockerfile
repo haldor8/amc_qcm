@@ -1,27 +1,38 @@
+# Base Debian
 FROM debian:bullseye
 
-# Dépendances système + AMC + MongoDB + Node.js
+# Dépendances générales
 RUN apt-get update && apt-get install -y \
-    curl gnupg wget build-essential \
-    mongodb nodejs npm \
+    curl gnupg wget build-essential ca-certificates lsb-release gnupg2 \
+    libssl-dev libffi-dev
+
+# Ajout de la clé GPG MongoDB officielle
+RUN curl -fsSL https://pgp.mongodb.com/server-6.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-server-6.0.gpg
+
+# Ajout du dépôt officiel MongoDB 6.0 pour Debian
+RUN echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-6.0.gpg ] https://repo.mongodb.org/apt/debian bullseye/mongodb-org/6.0 main" \
+    > /etc/apt/sources.list.d/mongodb-org-6.0.list
+
+# Installation de MongoDB + AMC + Node.js
+RUN apt-get update && apt-get install -y \
+    mongodb-org \
+    nodejs npm \
     texlive-full \
     auto-multiple-choice \
     && rm -rf /var/lib/apt/lists/*
 
-# Dossier de travail
+# Création dossier base Mongo
 WORKDIR /app
-
-# Copier le code source
-COPY . /app
-
-# Créer un dossier pour la base de données MongoDB
 RUN mkdir -p /app/db
 
-# Installer les dépendances Node.js
+# Copie du projet
+COPY . /app
+
+# Installation des modules Node.js
 RUN npm install
 
-# Exposer les ports
+# Ports exposés
 EXPOSE 3000 27017
 
-# Commande de démarrage : MongoDB avec db dans ./db, puis serveur
-CMD mongod --dbpath /app/db --fork --logpath /var/log/mongod.log && node server.js
+# Lancement Mongo + serveur Node
+CMD ["sh", "-c", "mongod --dbpath ./db --fork --logpath /var/log/mongod.log && node server.js"]
