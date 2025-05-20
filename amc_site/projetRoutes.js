@@ -72,7 +72,7 @@ router.get('/fichiers', ensureAuthenticated, (req, res) => {
   res.json(fichiers); // exemple : ["exam.tex", "etudiants.csv", "notes.odt"]
 });
 
-
+// Gère toutes les actions que l'utilisateur peut faire avec les scripts
 router.post('/action', ensureAuthenticated, async (req, res) => {
   const { projet, action, latex, etudiants, xml } = req.body;
   const user = req.session.user;
@@ -126,6 +126,7 @@ router.post('/action', ensureAuthenticated, async (req, res) => {
       return res.status(400).send('Action inconnue');
     }
 
+    // Si un fichier doit être télécharger, on le télécharge
     if (fs.existsSync(filePath)) {
       res.download(filePath);
     } else {
@@ -134,6 +135,7 @@ router.post('/action', ensureAuthenticated, async (req, res) => {
   });
 });
 
+// Pour lire les fichiers contenu dans le dossier possédé par l'utilisateur
 const scanStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     const utilisateur = req.session.user;
@@ -196,6 +198,7 @@ router.delete('/supprimer-scans/:projet', ensureAuthenticated, (req, res) => {
   res.sendStatus(200);
 });
 
+// Pour supprimer un projet
 router.delete('/supprimer/:projet', ensureAuthenticated, (req, res) => {
   const projetDir = path.join(__dirname, 'uploads', req.session.user, req.params.projet);
   if (!fs.existsSync(projetDir)) return res.status(404).send('Projet introuvable');

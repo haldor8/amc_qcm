@@ -1,31 +1,42 @@
 <!DOCTYPE html>
 <html>
-  <head><meta charset="UTF-8"><title>Projet</title></head>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Projet</title>
+  </head>
   <body>
     <div id="navbar"></div>
-    
+
     <h1 id="titre"></h1>
     <button id="btnNettoyerProjet">🧹 Nettoyer le projet</button>
 
-    <h2> Envoyer fichiers (liste d'étudiants, qcm...)</h2>
+    <h2>Envoyer fichiers (liste d'étudiants, qcm...)</h2>
     <form id="uploadForm" enctype="multipart/form-data">
-      <input type="file" id="fichiers" name="fichiers" multiple required>
+      <input type="file" id="fichiers" name="fichiers" multiple required />
       <button type="submit">Uploader</button>
     </form>
 
     <h2>Compiler un QCM</h2>
-    <form id="formCompiler" enctype="multipart/form-data" action="#" method="post">
+    <form
+      id="formCompiler"
+      enctype="multipart/form-data"
+      action="#"
+      method="post"
+    >
       <label for="xml">Fichier XML :</label>
-      <select id="xmlSelect" name="xml" required></select><br><br>
+      <select id="xmlSelect" name="xml" required></select
+      ><br /><br />
       <button type="submit">Compiler</button>
     </form>
 
     <h2>Créer copies</h2>
     <form id="formCreer">
-      <label>Fichier LaTeX :
+      <label
+        >Fichier LaTeX :
         <select id="latexSelect" name="latex" required></select>
       </label>
-      <label>Liste étudiants :
+      <label
+        >Liste étudiants :
         <select id="etudiantsCreerSelect" name="etudiants" required></select>
       </label>
       <button type="submit">Créer copies</button>
@@ -33,187 +44,217 @@
 
     <h2>Uploader les scans</h2>
     <form id="scanForm" enctype="multipart/form-data">
-      <input type="file" id="scans" name="scans" multiple required>
+      <input type="file" id="scans" name="scans" multiple required />
       <button type="submit">Uploader les scans</button>
       <button type="button" id="btnSupprimerScans">Supprimer les scans</button>
     </form>
 
     <h2>Corriger copies</h2>
     <form id="formCorriger">
-      <label>Liste étudiants :
+      <label
+        >Liste étudiants :
         <select id="etudiantsCorrigerSelect" name="etudiants" required></select>
       </label>
       <button type="submit">Corriger copies</button>
     </form>
 
     <script>
-    const params = new URLSearchParams(location.search);
-    const projet = params.get('nom');
-    document.getElementById('titre').textContent = projet;
+      const params = new URLSearchParams(location.search);
+      const projet = params.get("nom");
+      document.getElementById("titre").textContent = projet;
 
-    document.getElementById('uploadForm').onsubmit = async e => {
-      e.preventDefault();
-      const input = document.getElementById('fichiers');
-      const formData = new FormData();
-      for (const file of input.files) {
-        formData.append('fichiers', file);
+      // Requête pour envoyer les fichiers
+      document.getElementById("uploadForm").onsubmit = async (e) => {
+        e.preventDefault();
+        const input = document.getElementById("fichiers");
+        const formData = new FormData();
+        for (const file of input.files) {
+          formData.append("fichiers", file);
+        }
+
+        // On envoie maintenant le nom du projet dans l'URL
+        const res = await fetch(
+          `/api/projet/upload/${encodeURIComponent(projet)}`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        if (res.ok) {
+          alert("Upload terminé");
+          location.reload();
+        } else {
+          alert("Erreur pendant l’upload");
+        }
+      };
+
+      // Lire les fichiers du projet sélectionné par l'utilisateur
+      // Pour qu'il puisse sélectionner ce qu'il a déjà envoyé dans son projet
+      async function chargerFichiers() {
+        const res = await fetch(
+          "/api/projet/fichiers?projet=" + encodeURIComponent(projet)
+        );
+        const fichiers = await res.json();
+
+        const tex = fichiers.filter(
+          (f) => f.endsWith(".tex") && f !== "amc-compiled-config.tex"
+        );
+        const csv = fichiers.filter((f) => f.endsWith(".csv"));
+        const xml = fichiers.filter((f) => f.endsWith(".xml"));
+
+        const latexSelect = document.getElementById("latexSelect");
+        const etudiantsCreerSelect = document.getElementById(
+          "etudiantsCreerSelect"
+        );
+        const etudiantsCorrigerSelect = document.getElementById(
+          "etudiantsCorrigerSelect"
+        );
+        const xmlSelect = document.getElementById("xmlSelect");
+
+        tex.forEach((f) => {
+          const opt = new Option(f, f);
+          latexSelect.appendChild(opt);
+        });
+
+        csv.forEach((f) => {
+          etudiantsCreerSelect.appendChild(new Option(f, f));
+          etudiantsCorrigerSelect.appendChild(new Option(f, f));
+        });
+
+        xml.forEach((f) => {
+          xmlSelect.appendChild(new Option(f, f));
+        });
       }
 
-      // On envoie maintenant le nom du projet dans l'URL
-      const res = await fetch(`/api/projet/upload/${encodeURIComponent(projet)}`, {
-        method: 'POST',
-        body: formData
-      });
+      chargerFichiers(); // Appelle simplement la fonction pour charger les fichiers
 
-      if (res.ok) {
-        alert('Upload terminé');
-        location.reload();
-      } else {
-        alert('Erreur pendant l’upload');
+      // Envoie la requête pour créer les copies
+      document.getElementById("formCreer").onsubmit = async (e) => {
+        e.preventDefault();
+        const latex = e.target.latex.value;
+        const etudiants = e.target.etudiants.value;
+        const res = await fetch("/api/projet/action", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projet, action: "creer", latex, etudiants }),
+        });
+        if (!res.ok) return alert("Erreur");
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "copies.tar.gz"; // Télécharge les copies générées
+        a.click();
+      };
+
+      // Envoie le formulaire pour corriger les copies
+      document.getElementById("formCorriger").onsubmit = async (e) => {
+        e.preventDefault();
+        const etudiants = e.target.etudiants.value;
+        const res = await fetch("/api/projet/action", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projet, action: "corriger", etudiants }),
+        });
+        if (!res.ok) {
+          const message = await res.text();
+          alert("Erreur : " + message);
+          return;
+        }
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "export.ods"; // Télécharge la liste des notes
+        a.click();
+      };
+
+      // Envoie les scans sélectionnés par l'utilisateur
+      document.getElementById("scanForm").onsubmit = async (e) => {
+        e.preventDefault();
+        const input = document.getElementById("scans");
+        const formData = new FormData();
+        for (const file of input.files) {
+          formData.append("scans", file);
+        }
+
+        const res = await fetch(
+          `/api/projet/upload/${encodeURIComponent(projet)}/scans`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        if (res.ok) {
+          alert("Scans envoyés !");
+        } else {
+          alert("Erreur pendant l'envoi des scans.");
+        }
+      };
+
+      // <WIP> Requête pour envoyer les
+      document.getElementById("formCompiler").onsubmit = async (e) => {
+        e.preventDefault();
+        const xml = e.target.xml.value;
+
+        const res = await fetch("/api/projet/action", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projet, action: "compiler", xml }),
+        });
+
+        if (!res.ok) {
+          const msg = await res.text();
+          alert("Erreur : " + msg);
+          return;
+        }
+
+        alert("Compilation lancée !");
+      };
+
+      document.getElementById("btnSupprimerScans").onclick = async () => {
+        const ok = confirm("Supprimer tous les fichiers du dossier scans ?");
+        if (!ok) return;
+
+        const res = await fetch(
+          `/api/projet/supprimer-scans/${encodeURIComponent(projet)}`,
+          {
+            method: "DELETE",
+          }
+        );
+
+        if (res.ok) alert("Scans supprimés !");
+        else alert("Erreur suppression des scans.");
+      };
+
+      document.getElementById("btnNettoyerProjet").onclick = async () => {
+        const ok = confirm(
+          "Nettoyer tout le projet ? Tous les fichiers seront supprimés (les dossiers seront conservés)."
+        );
+        if (!ok) return;
+
+        const res = await fetch(
+          `/api/projet/nettoyer/${encodeURIComponent(projet)}`,
+          {
+            method: "DELETE",
+          }
+        );
+
+        if (res.ok) alert("Projet nettoyé !");
+        else alert("Erreur nettoyage.");
+      };
+
+      async function chargerNavbar() {
+        const navbar = document.getElementById("navbar");
+
+        // Charger le HTML de la navbar
+        const html = await fetch("/partials/navbar.html").then((r) => r.text());
+        navbar.innerHTML = html;
       }
-    };
-
-    async function chargerFichiers() {
-      const res = await fetch('/api/projet/fichiers?projet=' + encodeURIComponent(projet));
-      const fichiers = await res.json();
-
-      const tex = fichiers.filter(f => f.endsWith('.tex') && f !== 'amc-compiled-config.tex');
-      const csv = fichiers.filter(f => f.endsWith('.csv'));
-      const xml = fichiers.filter(f => f.endsWith('.xml'));
-
-      const latexSelect = document.getElementById('latexSelect');
-      const etudiantsCreerSelect = document.getElementById('etudiantsCreerSelect');
-      const etudiantsCorrigerSelect = document.getElementById('etudiantsCorrigerSelect');
-      const xmlSelect = document.getElementById('xmlSelect');
-
-      tex.forEach(f => {
-        const opt = new Option(f, f);
-        latexSelect.appendChild(opt);
-      });
-
-      csv.forEach(f => {
-        etudiantsCreerSelect.appendChild(new Option(f, f));
-        etudiantsCorrigerSelect.appendChild(new Option(f, f));
-      });
-
-      xml.forEach(f => {
-        xmlSelect.appendChild(new Option(f, f));
-      });
-    }
-
-    chargerFichiers();
-
-    document.getElementById('formCreer').onsubmit = async e => {
-      e.preventDefault();
-      const latex = e.target.latex.value;
-      const etudiants = e.target.etudiants.value;
-      const res = await fetch('/api/projet/action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projet, action: 'creer', latex, etudiants })
-      });
-      if (!res.ok) return alert('Erreur');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'copies.tar.gz';
-      a.click();
-    };
-
-    document.getElementById('formCorriger').onsubmit = async e => {
-      e.preventDefault();
-      const etudiants = e.target.etudiants.value;
-      const res = await fetch('/api/projet/action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projet, action: 'corriger', etudiants })
-      });
-      if (!res.ok) {
-        const message = await res.text();
-        alert("Erreur : " + message);
-        return;
-      }
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'export.ods';
-      a.click();
-    };
-
-    document.getElementById('scanForm').onsubmit = async e => {
-      e.preventDefault();
-      const input = document.getElementById('scans');
-      const formData = new FormData();
-      for (const file of input.files) {
-        formData.append('scans', file);
-      }
-
-      const res = await fetch(`/api/projet/upload/${encodeURIComponent(projet)}/scans`, {
-        method: 'POST',
-        body: formData
-      });
-
-      if (res.ok) {
-        alert("Scans envoyés !");
-      } else {
-        alert("Erreur pendant l'envoi des scans.");
-      }
-    };
-
-    document.getElementById('formCompiler').onsubmit = async e => {
-      e.preventDefault();
-      const xml = e.target.xml.value;
-
-      const res = await fetch('/api/projet/action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projet, action: 'compiler', xml })
-      });
-
-      if (!res.ok) {
-        const msg = await res.text();
-        alert('Erreur : ' + msg);
-        return;
-      }
-
-      alert("Compilation lancée !");
-    };
-
-    document.getElementById('btnSupprimerScans').onclick = async () => {
-      const ok = confirm("Supprimer tous les fichiers du dossier scans ?");
-      if (!ok) return;
-
-      const res = await fetch(`/api/projet/supprimer-scans/${encodeURIComponent(projet)}`, {
-        method: 'DELETE'
-      });
-
-      if (res.ok) alert("Scans supprimés !");
-      else alert("Erreur suppression des scans.");
-    };
-
-    document.getElementById('btnNettoyerProjet').onclick = async () => {
-      const ok = confirm("Nettoyer tout le projet ? Tous les fichiers seront supprimés (les dossiers seront conservés).");
-      if (!ok) return;
-
-      const res = await fetch(`/api/projet/nettoyer/${encodeURIComponent(projet)}`, {
-        method: 'DELETE'
-      });
-
-      if (res.ok) alert("Projet nettoyé !");
-      else alert("Erreur nettoyage.");
-    };
-
-    async function chargerNavbar() {
-      const navbar = document.getElementById('navbar');
-
-      // Charger le HTML de la navbar
-      const html = await fetch('/partials/navbar.html').then(r => r.text());
-      navbar.innerHTML = html;
-    }
-    chargerNavbar();
+      chargerNavbar();
     </script>
   </body>
 </html>

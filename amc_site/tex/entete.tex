@@ -1,0 +1,50 @@
+% Exemple d'en-tête pouvant être réutilisée
+
+%%% debut de l'en-tête des copies :
+
+\noindent{\bf QCM  \hfill TEST}
+
+\vspace*{.5cm}
+\begin{minipage}{.4\linewidth}
+
+% Titre optionnel
+\centering\large\bf Test\\ Examen du 01/01/2008\end{minipage}
+
+% Nom de l'étudiant
+\champnom{\fbox{
+                \begin{minipage}{.5\linewidth}
+                  Nom et prénom :
+
+                  \vspace*{.5cm}\namefielddots
+                  \vspace*{1mm}
+                \end{minipage}
+         }}
+         
+% Numéro étudiant (10 chiffres)
+\hspace*{\fill}
+\fbox{
+  \begin{minipage}{0.6\linewidth}
+    \centering
+    Numéro étudiant :\\[1ex]
+    \AMCcodeGridInt[h]{id}{10}
+  \end{minipage}
+}
+\hspace*{\fill}
+
+% Message optionnel
+\begin{center}\em
+Durée : 10 minutes.
+
+  Aucun document n'est autorisé.
+  L'usage de la calculatrice est interdit.
+
+  Les questions faisant apparaître le symbole \multiSymbole{} peuvent
+  présenter zéro, une ou plusieurs bonnes réponses. Les autres ont
+  une unique bonne réponse.
+
+  Des points négatifs pourront être affectés à de \emph{très
+    mauvaises} réponses.
+\end{center}
+\vspace{1ex}
+
+%%% fin de l'en-tête

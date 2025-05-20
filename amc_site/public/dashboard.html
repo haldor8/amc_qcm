@@ -1,76 +1,95 @@
 <!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"><title>Dashboard</title></head>
-<body>
-  <div id="navbar"></div>
-  
-  <h1>Vos projets</h1>
-  <ul id="liste"></ul>
-  <form id="formProjet">
-    <input name="nom" placeholder="Nom projet" required>
-    <button type="submit">Créer</button>
-  </form>
-  <script>
-    fetch('/api/projet/liste')
-    .then(res => res.json())
-    .then(projets => {
-      const ul = document.getElementById('liste');
-      projets.forEach(p => {
-        const li = document.createElement('li');
-        li.innerHTML = `
+  <head>
+    <meta charset="UTF-8" />
+    <title>Dashboard</title>
+  </head>
+  <body>
+    <!-- Réserver l'espace de la navbar -->
+    <div id="navbar"></div>
+
+    <h1>Vos projets</h1>
+    <ul id="liste"></ul>
+    <form id="formProjet">
+      <input name="nom" placeholder="Nom projet" required />
+      <button type="submit">Créer</button>
+    </form>
+    <script>
+      // Pour lister tous les projets que l'utilisateur a dans son dossier personnel
+      fetch("/api/projet/liste")
+        .then((res) => res.json())
+        .then((projets) => {
+          const ul = document.getElementById("liste");
+          projets.forEach((p) => {
+            const li = document.createElement("li");
+            li.innerHTML = `
           <a href="/projet.html?nom=${encodeURIComponent(p)}">${p}</a>
-          <button onclick="nettoyerProjet('${encodeURIComponent(p)}')">🧹 Nettoyer</button>
-          <button onclick="supprimerProjet('${encodeURIComponent(p)}')">🗑️ Supprimer</button>
+          <button onclick="nettoyerProjet('${encodeURIComponent(
+            p
+          )}')">🧹 Nettoyer</button>
+          <button onclick="supprimerProjet('${encodeURIComponent(
+            p
+          )}')">🗑️ Supprimer</button>
         `;
-        ul.appendChild(li);
-      });
-    });
+            ul.appendChild(li);
+          });
+        });
 
-    document.getElementById('formProjet').onsubmit = async (e) => {
-      e.preventDefault();
-      const data = Object.fromEntries(new FormData(e.target).entries());
-      await fetch('/api/projet/creer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      location.reload();
-    };
-
-    async function nettoyerProjet(nom) {
-      const ok = confirm(`Supprimer tous les fichiers de "${decodeURIComponent(nom)}" (hors dossiers) ?`);
-      if (!ok) return;
-
-      const res = await fetch(`/api/projet/nettoyer/${nom}`, {
-        method: 'DELETE'
-      });
-
-      if (res.ok) alert(`Projet "${decodeURIComponent(nom)}" nettoyé`);
-      else alert('Erreur nettoyage');
-    }
-
-    async function supprimerProjet(nom) {
-      const ok = confirm(`SUPPRIMER complètement le projet "${decodeURIComponent(nom)}" ?`);
-      if (!ok) return;
-
-      const res = await fetch(`/api/projet/supprimer/${nom}`, {
-        method: 'DELETE'
-      });
-
-      if (res.ok) {
-        alert(`Projet "${decodeURIComponent(nom)}" supprimé`);
+      // Requête pour créer un projet
+      document.getElementById("formProjet").onsubmit = async (e) => {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData(e.target).entries());
+        await fetch("/api/projet/creer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
         location.reload();
-      } else alert('Erreur suppression');
-    }
-    
-    async function chargerNavbar() {
-      const navbar = document.getElementById('navbar');
+      };
 
-      // Charger le HTML de la navbar
-      const html = await fetch('/partials/navbar.html').then(r => r.text());
-      navbar.innerHTML = html;
-    }
-    chargerNavbar();
-  </script>
-</body>
+      // Requête pour nettoyer le projet (supprimer tout sauf les dossiers)
+      async function nettoyerProjet(nom) {
+        const ok = confirm(
+          `Supprimer tous les fichiers de "${decodeURIComponent(
+            nom
+          )}" (hors dossiers) ?`
+        );
+        if (!ok) return;
+
+        const res = await fetch(`/api/projet/nettoyer/${nom}`, {
+          method: "DELETE",
+        });
+
+        if (res.ok) alert(`Projet "${decodeURIComponent(nom)}" nettoyé`);
+        else alert("Erreur nettoyage");
+      }
+
+      // Requête pour supprimer le projet
+      async function supprimerProjet(nom) {
+        const ok = confirm(
+          `SUPPRIMER complètement le projet "${decodeURIComponent(nom)}" ?`
+        );
+        if (!ok) return;
+
+        const res = await fetch(`/api/projet/supprimer/${nom}`, {
+          method: "DELETE",
+        });
+
+        if (res.ok) {
+          alert(`Projet "${decodeURIComponent(nom)}" supprimé`);
+          location.reload();
+        } else alert("Erreur suppression");
+      }
+
+      // Charger la navbar
+      async function chargerNavbar() {
+        const navbar = document.getElementById("navbar");
+
+        // Charger le HTML de la navbar
+        const html = await fetch("/partials/navbar.html").then((r) => r.text());
+        navbar.innerHTML = html;
+      }
+      chargerNavbar();
+    </script>
+  </body>
 </html>
