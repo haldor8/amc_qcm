@@ -1,0 +1,92 @@
+\documentclass[a4paper]{article}
+
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+
+\usepackage[francais,bloc,completemulti]{automultiplechoice}
+\begin{document}
+
+\exemplaire{3}{
+
+%%% debut de l'en-tête des copies :
+
+\noindent{\bf QCM  \hfill TEST}
+
+\vspace*{.5cm}
+\begin{minipage}{.4\linewidth}
+
+% Titre optionnel
+\centering\large\bf Test\\ Examen du 01/01/2008\end{minipage}
+   
+% Numéro étudiant et nom étudiant
+\noindent
+\begin{minipage}{0.45\linewidth}
+  \raggedright
+  Numéro étudiant :\\[1ex]
+  \AMCcodeGridInt[h]{id}{10}
+\end{minipage}
+\hfill
+\begin{minipage}{0.5\linewidth}
+
+  <- codez votre numéro d'étudiant ci-contre,
+  et écrivez votre nom et prénom ci-dessous.
+  \vspace*{1mm}
+  
+  \champnom{
+    \fbox{
+      \begin{minipage}{0.9\linewidth}
+        Nom et prénom :
+
+        \vspace*{.5cm}\namefielddots
+        \vspace*{1mm}
+      \end{minipage}
+    }
+  }
+\end{minipage}
+
+
+
+
+% Message optionnel
+\begin{center}\em
+Durée : 10 minutes.
+
+  Aucun document n'est autorisé.
+  L'usage de la calculatrice est interdit.
+
+  Les questions faisant apparaître le symbole \multiSymbole{} peuvent
+  présenter zéro, une ou plusieurs bonnes réponses. Les autres ont
+  une unique bonne réponse.
+
+  Des points négatifs pourront être affectés à de \emph{très
+    mauvaises} réponses.
+\end{center}
+\vspace{1ex}
+
+%%% fin de l'en-tête
+
+\begin{question}{prez}
+  Parmi les personnalités suivantes, laquelle a été présidente
+  de la république française~?
+  \begin{reponses}
+    \bonne{René Coty}
+    \mauvaise{Alain Prost}
+    \mauvaise{Marcel Proust}
+    \mauvaise{Claude Monet}
+  \end{reponses}
+\end{question}
+
+\begin{questionmult}{pref}
+  Parmi les villes suivantes, lesquelles sont des préfectures~?
+  \begin{reponses}
+    \bonne{Poitiers}
+    \mauvaise{Sainte-Menehould}
+    \bonne{Avignon}
+  \end{reponses}
+\end{questionmult}
+
+% \AMCaddpagesto{3}
+
+}
+
+\end{document}
